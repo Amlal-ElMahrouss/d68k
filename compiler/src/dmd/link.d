@@ -489,6 +489,8 @@ public int runLINK()
         int status;
         // Build argv[]
         Strings argv;
+        string linker;
+
         const(char)* cc = getenv("CC");
         if (!cc)
         {
@@ -656,6 +658,14 @@ public int runLINK()
             ;
         }
 
+        // return true if flagp is a linker option
+        static bool flagIsLinker(const char* p)
+        {
+            const flag = p.toDString();
+
+            return startsWith(p, "--flinker");
+        }
+
         /* Add libraries. The order of libraries passed is:
          *  1. link switches without a -L prefix,
                e.g. --whole-archive "lib.a" --no-whole-archive     (global.params.linkswitches)
@@ -667,9 +677,55 @@ public int runLINK()
          *  6. standard libraries.
          */
 
+        static core.stdc.ctype.ptrdiff_t indexOfS(string haystack, string needle)
+        {
+            import std.conv : to;
+            import std.string : indexOf;
+            import std.typecons : No;
+
+            ptrdiff_t needle_root = indexOf(haystack, needle[0]);
+            size_t idx = 1UL;
+
+            for (; needle_root < haystack.length; ++needle_root)
+            {
+                if (haystack[needle_root] != needle[idx])
+                    return -1;
+
+                ++idx;
+            }
+
+            return needle_root;
+        }
+
         // STEP 1
         foreach (pi, p; global.params.linkswitches)
         {
+            if (p[0] && flagIsLinker(p))
+            {
+                try
+                {
+                    import std.conv : to;
+                    import std.typecons : No;
+                    import std.string : indexOf, toStringz;
+
+                    string p_wrap = to!string(p);
+
+                    auto startIndex = indexOfS(p_wrap, to!string("--flinker"));
+                    auto endIndex   = indexOf(p_wrap, '=', startIndex);
+                    linker = to!string(p[startIndex + "--flinker".length .. endIndex]);
+
+                    version (Posix)
+                    {
+                        argv.push("-fuse-ld=");
+                        argv.push(toStringz(linker));
+                    }
+                }
+                catch (Exception exp)
+                {
+                    continue;
+                }
+            }
+
             if (p && p[0] && !flagIsLibraryRelated(p))
             {
                 if (!global.params.linkswitchIsForCC[pi])

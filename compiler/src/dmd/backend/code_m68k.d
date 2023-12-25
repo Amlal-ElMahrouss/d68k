@@ -19,10 +19,10 @@ nothrow:
 alias opcode_t = uint;           // CPU opcode
 alias register_t = uint;
 
-enum opcode_t NoOpcode = 0x0000; // not a valid opcode_t
+enum opcode_t nop_value = 0x0000; // not a valid opcode_t
 
 // registers
-enum
+enum M68KRegisterList
 {
     D0 = 0,
     D1,
@@ -45,7 +45,7 @@ enum
     NUM_REGS,
 }
 
-public struct CodeRegister
+public struct register_type
 {
     private register_t mReg = D0;
 
